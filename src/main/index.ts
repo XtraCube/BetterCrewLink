@@ -1,6 +1,7 @@
 'use strict'; // eslint-disable-line
 
 import { autoUpdater } from 'electron-updater';
+import { fork } from 'child_process';
 import { app, BrowserWindow, ipcMain, session } from 'electron';
 import windowStateKeeper from 'electron-window-state';
 import { platform } from 'os';
@@ -218,6 +219,7 @@ function createOverlay() {
 	return overlay;
 }
 
+
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
 	app.quit();
@@ -376,5 +378,11 @@ if (!gotTheLock) {
 		}
 	});
 
+	// use child_process to spawn integration server
+	const integrationServer = fork(joinPath(__dirname,"integrationServer.ts"), [], { "execArgv":["-r", "ts-node/register"] });
+	integrationServer.unref();
 
+	integrationServer.on('message', (message) => {
+		console.log('Received process message:', message);
+	});
 }
