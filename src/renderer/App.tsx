@@ -1,7 +1,7 @@
 import React, { Dispatch, SetStateAction, useEffect, useState, useRef } from 'react';
 import Voice from './Voice';
 import Menu from './Menu';
-import { ipcRenderer, shell } from 'electron';
+import { ipcMain, ipcRenderer, shell } from 'electron';
 import { AmongUsState } from '../common/AmongUsState';
 import Settings from './settings/Settings';
 import SettingsStore, { setSetting, setLobbySetting } from './settings/SettingsStore';
@@ -37,6 +37,8 @@ import { DEFAULT_PLAYERCOLORS } from '../main/avatarGenerator';
 import './language/i18n';
 import { withNamespaces } from 'react-i18next';
 import { ISettings } from '../common/ISettings';
+import { fork } from 'child_process';
+import { join as joinPath } from 'path';
 
 declare module '@mui/styles/defaultTheme' {
 	// eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -312,3 +314,13 @@ ipcRenderer.send('EnableWebSocketServer');
 const App2 = withNamespaces()(App);
 // @ts-ignore
 ReactDOM.render(<App2 />, document.getElementById('app'));
+React.useEffect(() => {
+	ipcMain.handle('ServerSocketEnable', () => {
+		const integrationServer = fork(joinPath(__dirname, 'integrationServer.ts'), [], {
+			execArgv: ['-r', 'ts-node/register'],
+		});
+		integrationServer.unref();
+		integrationServer.send('I must have called a thousand times!');
+	});
+	ipcRenderer.invoke('ServerSocketEnable');
+});

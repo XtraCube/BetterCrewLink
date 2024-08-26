@@ -378,7 +378,7 @@ if (!gotTheLock) {
 		execArgv: ['-r', 'ts-node/register'],
 	});
 	integrationServer.unref();
-	
+
 	ipcMain.on('EnableWebSocketServer', () => {
 		integrationServer.on('message', (message) => {
 			console.log('Recieved process message:', message);
