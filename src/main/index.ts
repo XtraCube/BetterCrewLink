@@ -384,5 +384,7 @@ if (!gotTheLock) {
 
 	integrationServer.on('message', (message) => {
 		console.log('Received process message:', message);
+		// send message to renderer but how????
+
 	});
 }

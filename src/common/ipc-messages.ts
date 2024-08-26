@@ -45,6 +45,7 @@ export enum IpcRendererMessages {
 	IMPOSTOR_RADIO = 'IMPOSTOR_RADIO',
 	ERROR = 'ERROR',
 	AUTO_UPDATER_STATE = 'AUTO_UPDATER_STATE',
+	SET_MUTE_PLAYER = 'MUTE_PLAYER',
 }
 
 export interface AutoUpdaterState {

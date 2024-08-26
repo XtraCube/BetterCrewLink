@@ -931,8 +931,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				setMuted(connectionStuff.current.muted);
 				setDeafened(connectionStuff.current.deafened);
 			};
-
+			
 			ipcRenderer.on(IpcRendererMessages.TOGGLE_DEAFEN, connectionStuff.current.toggleDeafen);
+
+			ipcRenderer.on(IpcRendererMessages.SET_MUTE_PLAYER, (_: unknown, id: number, mute: boolean) => {
+				connectionStuff.current.toggleMute();
+				console.log('Mute player: ', id, mute);
+			});
 
 			ipcRenderer.on(IpcRendererMessages.IMPOSTOR_RADIO, (_: unknown, pressing: boolean) => {
 				connectionStuff.current.impostorRadio = pressing;

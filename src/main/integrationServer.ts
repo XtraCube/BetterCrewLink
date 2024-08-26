@@ -9,8 +9,9 @@ wss.on('connection', function connection(ws) {
         
         console.log('received: %s', data);
 
+        
         if (process.send) {
-            process.send(data);
+            process.send(data.toString());
         }
         else {
             console.error('No process.send function');
