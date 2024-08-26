@@ -84,7 +84,7 @@ function sortLobbies(a: PublicLobby, b: PublicLobby) {
 }
 
 function getModName(mod: string): string {
-	return modList.find((o) => o.id === mod)?.label || (mod ?? 'None')
+	return modList.find((o) => o.id === mod)?.label || (mod ?? 'None');
 }
 
 // @ts-ignore
@@ -96,7 +96,7 @@ export default function lobbyBrowser({ t }) {
 	const [, forceRender] = useState({});
 
 	const [mod, setMod] = useState<ModsType>('NONE');
-	
+
 	useEffect(() => {
 		ipcRenderer.invoke(IpcMessages.REQUEST_MOD).then((mod: ModsType) => setMod(mod));
 
@@ -194,9 +194,7 @@ export default function lobbyBrowser({ t }) {
 											<StyledTableCell align="left">
 												{row.current_players}/{row.max_players}
 											</StyledTableCell>
-											<StyledTableCell align="left">
-												{getModName(row.mods)}
-											</StyledTableCell>
+											<StyledTableCell align="left">{getModName(row.mods)}</StyledTableCell>
 											<StyledTableCell align="left">
 												{(languages as any)[row.language]?.name ?? 'English'}
 											</StyledTableCell>
@@ -207,9 +205,15 @@ export default function lobbyBrowser({ t }) {
 											<StyledTableCell align="right">
 												<Tooltip
 													title={
-														row.gameState !== GameState.LOBBY ? t('lobbybrowser.code_tooltips.in_progress') :
-														row.max_players === row.current_players ? t('lobbybrowser.code_tooltips.full_lobby') :
-														row.mods != mod ? `${t('lobbybrowser.code_tooltips.incompatible')} '${getModName(mod)}' ${t('lobbybrowser.code_tooltips.and')} '${getModName(row.mods)}'` : ""
+														row.gameState !== GameState.LOBBY
+															? t('lobbybrowser.code_tooltips.in_progress')
+															: row.max_players === row.current_players
+															? t('lobbybrowser.code_tooltips.full_lobby')
+															: row.mods != mod
+															? `${t('lobbybrowser.code_tooltips.incompatible')} '${getModName(mod)}' ${t(
+																	'lobbybrowser.code_tooltips.and'
+															  )} '${getModName(row.mods)}'`
+															: ''
 													}
 												>
 													<span>

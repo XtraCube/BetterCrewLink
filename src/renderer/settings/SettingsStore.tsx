@@ -92,7 +92,7 @@ export const SettingsStore = new Store<ISettings>({
 				// @ts-ignore
 				store.delete('ghostVolume');
 			}
-		}
+		},
 	},
 	schema: {
 		alwaysOnTop: {
@@ -367,10 +367,15 @@ export const SettingsStore = new Store<ISettings>({
 });
 
 // This is fricken weird but also great
-type ISettingOrSocketConfig<K extends keyof ISettings | `playerConfigMap.${number}`> = K extends keyof ISettings ? ISettings[K] : SocketConfig;
+type ISettingOrSocketConfig<K extends keyof ISettings | `playerConfigMap.${number}`> = K extends keyof ISettings
+	? ISettings[K]
+	: SocketConfig;
 
 // If our setting is a keyof ISettings, value is the appropriate type. If setting is `playerConfigMap.1234` then value is a socket config
-export const setSetting = <K extends (keyof ISettings | `playerConfigMap.${number}`)>(setting: K, value: ISettingOrSocketConfig<K>) => {
+export const setSetting = <K extends keyof ISettings | `playerConfigMap.${number}`>(
+	setting: K,
+	value: ISettingOrSocketConfig<K>
+) => {
 	SettingsStore.set(setting, value);
 };
 

@@ -180,16 +180,16 @@ const LaunchButton: React.FC<LauncherProps> = function ({ t }: LauncherProps) {
 				className={classes.dropdown}
 				modifiers={[
 					{
-						name: "flip",
+						name: 'flip',
 						options: {
 							enabled: false,
 						},
 					},
 					{
-						name: "preventOverflow",
+						name: 'preventOverflow',
 						options: {
 							enabled: true,
-							boundariesElement: 'viewport'
+							boundariesElement: 'viewport',
 						},
 					},
 				]}

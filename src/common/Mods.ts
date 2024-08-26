@@ -1,9 +1,4 @@
-export type ModsType =
-	| 'NONE'
-	| 'TOWN_OF_US'
-	| 'THE_OTHER_ROLES'
-	| 'LAS_MONJAS'
-	| 'OTHER';
+export type ModsType = 'NONE' | 'TOWN_OF_US' | 'THE_OTHER_ROLES' | 'LAS_MONJAS' | 'OTHER';
 
 export interface AmongusMod {
 	id: ModsType;

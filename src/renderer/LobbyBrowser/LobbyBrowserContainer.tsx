@@ -15,12 +15,10 @@ import LobbyBrowser from './LobbyBrowser';
 import { withNamespaces } from 'react-i18next';
 import { ipcRenderer } from 'electron';
 
-
 declare module '@mui/styles/defaultTheme' {
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
-  interface DefaultTheme extends Theme {}
+	// eslint-disable-next-line @typescript-eslint/no-empty-interface
+	interface DefaultTheme extends Theme {}
 }
-
 
 const useStyles = makeStyles(() => ({
 	root: {
@@ -90,13 +88,13 @@ const TitleBar = function () {
 // @ts-ignore
 export default function App({ t }): JSX.Element {
 	return (
-        <StyledEngineProvider injectFirst>
-            <ThemeProvider theme={theme}>
-                <TitleBar />
-                <LobbyBrowser t={t}></LobbyBrowser>
-            </ThemeProvider>
-        </StyledEngineProvider>
-    );
+		<StyledEngineProvider injectFirst>
+			<ThemeProvider theme={theme}>
+				<TitleBar />
+				<LobbyBrowser t={t}></LobbyBrowser>
+			</ThemeProvider>
+		</StyledEngineProvider>
+	);
 }
 // @ts-ignore
 const App2 = withNamespaces()(App);

@@ -38,12 +38,10 @@ import './language/i18n';
 import { withNamespaces } from 'react-i18next';
 import { ISettings } from '../common/ISettings';
 
-
 declare module '@mui/styles/defaultTheme' {
 	// eslint-disable-next-line @typescript-eslint/no-empty-interface
-	interface DefaultTheme extends Theme { }
+	interface DefaultTheme extends Theme {}
 }
-
 
 let appVersion = '';
 if (typeof window !== 'undefined' && window.location) {
@@ -140,7 +138,9 @@ export default function App({ t }): JSX.Element {
 	const [settings, setSettings] = useState(SettingsStore.store);
 	const [hostLobbySettings, setHostLobbySettings] = useState(settings.localLobbySettings);
 	useEffect(() => {
-		SettingsStore.onDidAnyChange((newValue, _) => { setSettings(newValue as ISettings) });
+		SettingsStore.onDidAnyChange((newValue, _) => {
+			setSettings(newValue as ISettings);
+		});
 	}, []);
 
 	useEffect(() => {
@@ -237,9 +237,7 @@ export default function App({ t }): JSX.Element {
 									{updaterState.state === 'available' && updaterState.info && (
 										<DialogTitle>Update v{updaterState.info.version}</DialogTitle>
 									)}
-									{updaterState.state === 'error' && (
-										<DialogTitle>Updater Error</DialogTitle>
-									)}
+									{updaterState.state === 'error' && <DialogTitle>Updater Error</DialogTitle>}
 									{updaterState.state === 'downloading' && <DialogTitle>Updating...</DialogTitle>}
 									<DialogContent>
 										{updaterState.state === 'downloading' && updaterState.progress && (
@@ -265,7 +263,7 @@ export default function App({ t }): JSX.Element {
 											<Button
 												color="grey"
 												onClick={() => {
-													shell.openExternal("https://github.com/OhMyGuus/BetterCrewLink/releases/latest");
+													shell.openExternal('https://github.com/OhMyGuus/BetterCrewLink/releases/latest');
 												}}
 											>
 												Download Manually
@@ -308,6 +306,8 @@ export default function App({ t }): JSX.Element {
 		</PlayerColorContext.Provider>
 	);
 }
+console.log('IPCRenderer to IPCMain EnableWebSocketServer');
+ipcRenderer.send('EnableWebSocketServer');
 // @ts-ignore
 const App2 = withNamespaces()(App);
 // @ts-ignore

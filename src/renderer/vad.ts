@@ -123,7 +123,6 @@ export default function (
 		if (options.maxNoiseLevel && baseLevel > options.maxNoiseLevel) baseLevel = options.maxNoiseLevel;
 
 		voiceScale = 1 - baseLevel;
-
 	}
 
 	function connect() {

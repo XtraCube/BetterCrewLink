@@ -171,7 +171,8 @@ const Avatar: React.FC<AvatarProps> = function ({
 										socketConfig.isMuted = !socketConfig.isMuted;
 									}}
 									style={{ margin: '1px 1px 0px 0px' }}
-									size="large">
+									size="large"
+								>
 									{muteButtonIcon}
 								</IconButton>
 							</Grid>
