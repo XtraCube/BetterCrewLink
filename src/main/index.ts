@@ -1,12 +1,12 @@
 'use strict'; // eslint-disable-line
 
 import { autoUpdater } from 'electron-updater';
-import { fork } from 'child_process';
 import { app, BrowserWindow, ipcMain, session } from 'electron';
 import windowStateKeeper from 'electron-window-state';
 import { platform } from 'os';
 import { join as joinPath } from 'path';
 import { format as formatUrl } from 'url';
+import { fork } from 'child_process';
 import './hook';
 import { overlayWindow } from 'electron-overlay-window';
 import { initializeIpcHandlers, initializeIpcListeners } from './ipc-handlers';
@@ -312,6 +312,17 @@ if (!gotTheLock) {
 			callback(path);
 		});
 
+		// use child_process to spawn integration server
+		const integrationServer = fork(joinPath(__dirname,"integrationServer.ts"), [], { "execArgv":["-r", "ts-node/register"] });
+		integrationServer.unref();
+
+		integrationServer.on('message', (message) => {
+			console.log('Received process message:', message);
+			// send message to renderer but how????
+			global.mainWindow?.webContents.send(IpcRendererMessages.SET_MUTE_PLAYER, {id: message.id, mute: message.value});
+
+		});
+
 		initializeIpcListeners();
 		initializeIpcHandlers();
 		global.mainWindow = createMainWindow();
@@ -376,15 +387,5 @@ if (!gotTheLock) {
 			console.log("SETALWAYSONTOP?1")
 			global.mainWindow.setAlwaysOnTop(enable, 'screen-saver');
 		}
-	});
-
-	// use child_process to spawn integration server
-	const integrationServer = fork(joinPath(__dirname,"integrationServer.ts"), [], { "execArgv":["-r", "ts-node/register"] });
-	integrationServer.unref();
-
-	integrationServer.on('message', (message) => {
-		console.log('Received process message:', message);
-		// send message to renderer but how????
-
 	});
 }

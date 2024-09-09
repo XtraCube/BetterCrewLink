@@ -714,6 +714,14 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		}
 	}, [gameState.gameState]);
 
+	useEffect(() => {
+		console.log('setting up listeners');
+		ipcRenderer.on(IpcRendererMessages.SET_MUTE_PLAYER, (_: unknown, id: number, mute: boolean) => {
+			playerConfigs[id].isMuted = mute;
+			console.log('Mute player: ', id, mute);
+		});
+	}, []);
+
 	// const [audioContext] = useState<AudioContext>(() => new AudioContext());
 	const connectionStuff = useRef<ConnectionStuff>({
 		pushToTalkMode: settings.pushToTalkMode,
@@ -933,11 +941,6 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			};
 			
 			ipcRenderer.on(IpcRendererMessages.TOGGLE_DEAFEN, connectionStuff.current.toggleDeafen);
-
-			ipcRenderer.on(IpcRendererMessages.SET_MUTE_PLAYER, (_: unknown, id: number, mute: boolean) => {
-				connectionStuff.current.toggleMute();
-				console.log('Mute player: ', id, mute);
-			});
 
 			ipcRenderer.on(IpcRendererMessages.IMPOSTOR_RADIO, (_: unknown, pressing: boolean) => {
 				connectionStuff.current.impostorRadio = pressing;
