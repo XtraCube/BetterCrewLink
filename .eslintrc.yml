@@ -22,8 +22,7 @@ settings:
     version: 'detect'
 rules:
   linebreak-style:
-    - error
-    - unix
+    - off
   'prettier/prettier':
     - error
   '@typescript-eslint/ban-ts-comment': off

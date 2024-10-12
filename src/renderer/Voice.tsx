@@ -301,7 +301,21 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		let skipDistanceCheck = false;
 		let muffleEnabled = false;
 
-		if (other.disconnected || other.isDummy) {
+		if (me.inputChannels === undefined) {
+			me.inputChannels = new Set<string>('default');
+		}
+		if (me.outputChannels === undefined) {
+			me.outputChannels = new Set<string>('default');
+		}
+
+		const myInputs = me.inputChannels;
+		const otherOutputs = other.outputChannels;
+
+		// Check if other player is outputting to any of my inputs
+		const commonChannels = [...myInputs].filter((value) => otherOutputs.has(value));
+		const shareChannels = commonChannels.length > 0;
+
+		if (other.disconnected || other.isDummy || !shareChannels) {
 			return 0;
 		}
 
@@ -504,12 +518,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	}
 
 	function disconnectClient(client: Client) {
-		if (!client || !client.clientId)
-			return;
+		if (!client || !client.clientId) return;
 		const oldSocketId = playerSocketIdsRef.current[client.clientId];
-		console.log("Checking for  old connection ....", client.clientId, oldSocketId)
+		console.log('Checking for  old connection ....', client.clientId, oldSocketId);
 		if (oldSocketId && audioElements.current[oldSocketId]) {
-			console.log("found old connection disconnecting....", client.clientId)
+			console.log('found old connection disconnecting....', client.clientId);
 			disconnectAudioElement(oldSocketId);
 		}
 	}
@@ -697,8 +710,6 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		lobbySettingsRef.current = lobbySettings;
 	}, [lobbySettings]);
 
-
-
 	// Set dead player data
 	useEffect(() => {
 		if (gameState.gameState === GameState.LOBBY) {
@@ -716,9 +727,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 	useEffect(() => {
 		console.log('setting up listeners');
-		ipcRenderer.on(IpcRendererMessages.SET_MUTE_PLAYER, (_: unknown, id: number, mute: boolean) => {
-			playerConfigs[id].isMuted = mute;
-			console.log('Mute player: ', id, mute);
+		ipcRenderer.on(IpcRendererMessages.SET_CHANNELS, (_: unknown, id: number, channels: any) => {
+			console.log('Setting channels of player ', id, ' to ', channels);
 		});
 	}, []);
 
@@ -771,9 +781,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		// (async function anyNameFunction() {
 		let currentLobby = '';
 		// Connect to voice relay server
-		connectionStuff.current.socket = io(settings.serverURL,{
-			transports: ['websocket']
-		 });
+		connectionStuff.current.socket = io(settings.serverURL, {
+			transports: ['websocket'],
+		});
 
 		const { socket } = connectionStuff.current;
 
@@ -854,292 +864,292 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			channelCount: 2,
 			echoCancellation: settings.echoCancellation,
 			latency: 0,
-			noiseSuppression: settings.noiseSuppression,// @ts-ignore-line
+			noiseSuppression: settings.noiseSuppression, // @ts-ignore-line
 			googNoiseSuppression: settings.noiseSuppression, // @ts-ignore-line
 			googEchoCancellation: settings.echoCancellation, // @ts-ignore-line
 			googTypingNoiseDetection: settings.noiseSuppression, // @ts-ignore-line
-			sampleRate: settings.oldSampleDebug? 48000 : undefined,
-			sampleSize: settings.oldSampleDebug? 16 : undefined,
+			sampleRate: settings.oldSampleDebug ? 48000 : undefined,
+			sampleSize: settings.oldSampleDebug ? 16 : undefined,
 		};
 
 		// Get microphone settings
 		if (settingsRef.current.microphone.toLowerCase() !== 'default') audio.deviceId = settingsRef.current.microphone;
-		navigator.mediaDevices.getUserMedia({ video: false, audio })
-		.then(async (inStream) => {
-			let stream = inStream;
-			const ac = new AudioContext();
-			let microphoneGain: GainNode | undefined;
-			const source = ac.createMediaStreamSource(inStream);
-			if (settings.microphoneGainEnabled || settings.micSensitivityEnabled) {
-				console.log('Microphone volume or sensitivityEnabled..');
-				stream = (() => {
-					microphoneGain = ac.createGain();
-					const destination = ac.createMediaStreamDestination();
-					source.connect(microphoneGain);
-					microphoneGain.gain.value = settings.microphoneGainEnabled ? settings.microphoneGain / 100 : 1;
-					microphoneGain.connect(destination);
-					connectionStuff.current.microphoneGain = microphoneGain;
-					return destination.stream;
-				})();
-			}
-
-			if (settingsRef.current.vadEnabled) {
-				audioListener = VAD(ac, source, undefined, {
-					onVoiceStart: () => {
-						if (microphoneGain && settingsRef.current.micSensitivityEnabled) {
-							microphoneGain.gain.value = settingsRef.current.microphoneGainEnabled
-								? settingsRef.current.microphoneGain / 100
-								: 1;
-						}
-						setTalking(true);
-					},
-					onVoiceStop: () => {
-						if (microphoneGain && settingsRef.current.micSensitivityEnabled) {
-							microphoneGain.gain.value = 0;
-						}
-						setTalking(false);
-					},
-					noiseCaptureDuration: 0,
-					stereo: false,
-				});
-
-				audioListener.options.minNoiseLevel = settingsRef.current.micSensitivityEnabled
-					? settingsRef.current.micSensitivity
-					: 0.15;
-				audioListener.options.maxNoiseLevel = 1;
-
-				audioListener.init();
-				connectionStuff.current.audioListener = audioListener;
-				connectionStuff.current.microphoneGain = microphoneGain;
-			}
-			connectionStuff.current.stream = stream;
-			connectionStuff.current.instream = inStream;
-
-			inStream.getAudioTracks()[0].enabled = settings.pushToTalkMode !== pushToTalkOptions.PUSH_TO_TALK;
-
-			connectionStuff.current.toggleDeafen = () => {
-				connectionStuff.current.deafened = !connectionStuff.current.deafened;
-				inStream.getAudioTracks()[0].enabled =
-					!connectionStuff.current.deafened &&
-					!connectionStuff.current.muted &&
-					connectionStuff.current.pushToTalkMode !== pushToTalkOptions.PUSH_TO_TALK;
-				setDeafened(connectionStuff.current.deafened);
-			};
-
-			connectionStuff.current.toggleMute = () => {
-				connectionStuff.current.muted = !connectionStuff.current.muted;
-				if (connectionStuff.current.deafened) {
-					connectionStuff.current.deafened = false;
-					connectionStuff.current.muted = false;
+		navigator.mediaDevices.getUserMedia({ video: false, audio }).then(
+			async (inStream) => {
+				let stream = inStream;
+				const ac = new AudioContext();
+				let microphoneGain: GainNode | undefined;
+				const source = ac.createMediaStreamSource(inStream);
+				if (settings.microphoneGainEnabled || settings.micSensitivityEnabled) {
+					console.log('Microphone volume or sensitivityEnabled..');
+					stream = (() => {
+						microphoneGain = ac.createGain();
+						const destination = ac.createMediaStreamDestination();
+						source.connect(microphoneGain);
+						microphoneGain.gain.value = settings.microphoneGainEnabled ? settings.microphoneGain / 100 : 1;
+						microphoneGain.connect(destination);
+						connectionStuff.current.microphoneGain = microphoneGain;
+						return destination.stream;
+					})();
 				}
-				inStream.getAudioTracks()[0].enabled =
-					!connectionStuff.current.muted &&
-					!connectionStuff.current.deafened &&
-					connectionStuff.current.pushToTalkMode !== pushToTalkOptions.PUSH_TO_TALK;
-				setMuted(connectionStuff.current.muted);
-				setDeafened(connectionStuff.current.deafened);
-			};
-			
-			ipcRenderer.on(IpcRendererMessages.TOGGLE_DEAFEN, connectionStuff.current.toggleDeafen);
 
-			ipcRenderer.on(IpcRendererMessages.IMPOSTOR_RADIO, (_: unknown, pressing: boolean) => {
-				connectionStuff.current.impostorRadio = pressing;
-			});
-
-			ipcRenderer.on(IpcRendererMessages.TOGGLE_MUTE, connectionStuff.current.toggleMute);
-			ipcRenderer.on(IpcRendererMessages.PUSH_TO_TALK, (_: unknown, pressing: boolean) => {
-				if (connectionStuff.current.pushToTalkMode === pushToTalkOptions.VOICE) return;
-				if (!connectionStuff.current.deafened && !connectionStuff.current.muted) {
-					inStream.getAudioTracks()[0].enabled =
-						connectionStuff.current.pushToTalkMode === pushToTalkOptions.PUSH_TO_TALK ? pressing : !pressing;
-				}
-			});
-
-			audioElements.current = {};
-
-			const connect = (lobbyCode: string, playerId: number, clientId: number, isHost: boolean) => {
-				console.log('connect called..', lobbyCode);
-				setOtherVAD({});
-				setOtherTalking({});
-				if (lobbyCode === 'MENU') {
-					Object.keys(peerConnections).forEach((k) => {
-						disconnectPeer(k);
-					});
-					setSocketClients({});
-					currentLobby = lobbyCode;
-				} else if (currentLobby !== lobbyCode) {
-					console.log('Currentlobby', currentLobby, lobbyCode);
-					socket.emit('leave');
-					socket.emit('id', playerId, clientId);
-					socket.emit('join', lobbyCode, playerId, clientId, isHost);
-					currentLobby = lobbyCode;
-				}
-			};
-
-			setConnect({ connect });
-
-			function createPeerConnection(peer: string, initiator: boolean, client: Client) {
-				console.log('CreatePeerConnection: ', peer, initiator);
-				disconnectClient(client);
-				const connection = new Peer({
-					stream,
-					initiator, // @ts-ignore-line
-					iceRestartEnabled: true,
-					config: settingsRef.current.natFix ? DEFAULT_ICE_CONFIG_TURN : iceConfig,
-				});
-
-				setPeerConnections((connections) => {
-					connections[peer] = connection;
-					return connections;
-				});
-
-				connection.on('connect', () => {
-					setTimeout(() => {
-						if (hostRef.current.isHost && connection.writable) {
-							try {
-								console.log('sending settings..');
-								connection.send(JSON.stringify(lobbySettingsRef.current));
-							} catch (e) {
-								console.warn('failed to update lobby settings: ', e);
+				if (settingsRef.current.vadEnabled) {
+					audioListener = VAD(ac, source, undefined, {
+						onVoiceStart: () => {
+							if (microphoneGain && settingsRef.current.micSensitivityEnabled) {
+								microphoneGain.gain.value = settingsRef.current.microphoneGainEnabled
+									? settingsRef.current.microphoneGain / 100
+									: 1;
 							}
-						}
-					}, 1000);
-				});
-
-				connection.on('stream', async (stream: MediaStream) => {
-					console.log('ONSTREAM');
-
-					setAudioConnected((old) => ({ ...old, [peer]: true }));
-					const dummyAudio = new Audio();
-					dummyAudio.srcObject = stream;
-					const context = new AudioContext();
-					const source = context.createMediaStreamSource(stream);
-					const dest = context.createMediaStreamDestination();
-
-					const gain = context.createGain();
-					const pan = context.createPanner();
-					gain.gain.value = 0;
-					pan.refDistance = 0.1;
-					pan.panningModel = 'equalpower';
-					pan.distanceModel = 'linear';
-					pan.maxDistance = maxDistanceRef.current;
-					pan.rolloffFactor = 1;
-
-					const muffle = context.createBiquadFilter();
-					muffle.type = 'lowpass';
-
-					source.connect(pan);
-					pan.connect(gain);
-
-					const reverb = context.createConvolver();
-					reverb.buffer = convolverBuffer.current;
-					const destination: AudioNode = dest;
-					// if (settingsRef.current.vadEnabled) {
-					// 	VAD(context, gain, undefined, {
-					// 		onVoiceStart: () => setTalking(true),
-					// 		onVoiceStop: () => setTalking(false),
-					// 		stereo: false,
-					// 	});
-					// }
-					gain.connect(destination);
-					const audio = document.createElement('audio') as ExtendedAudioElement;
-					document.body.appendChild(audio);
-					audio.setAttribute('autoplay', '');
-					audio.srcObject = dest.stream;
-					if (settingsRef.current.speaker.toLowerCase() !== 'default') {
-						audio.setSinkId(settingsRef.current.speaker);
-					}
-
-
-					audioElements.current[peer] = {
-						dummyAudioElement: dummyAudio,
-						audioElement: audio,
-						gain,
-						pan,
-						reverb,
-						muffle,
-						muffleConnected: false,
-						reverbConnected: false,
-						destination,
-					};
-				});
-
-				connection.on('signal', (data) => {
-					socket.emit('signal', {
-						data,
-						to: peer,
+							setTalking(true);
+						},
+						onVoiceStop: () => {
+							if (microphoneGain && settingsRef.current.micSensitivityEnabled) {
+								microphoneGain.gain.value = 0;
+							}
+							setTalking(false);
+						},
+						noiseCaptureDuration: 0,
+						stereo: false,
 					});
+
+					audioListener.options.minNoiseLevel = settingsRef.current.micSensitivityEnabled
+						? settingsRef.current.micSensitivity
+						: 0.15;
+					audioListener.options.maxNoiseLevel = 1;
+
+					audioListener.init();
+					connectionStuff.current.audioListener = audioListener;
+					connectionStuff.current.microphoneGain = microphoneGain;
+				}
+				connectionStuff.current.stream = stream;
+				connectionStuff.current.instream = inStream;
+
+				inStream.getAudioTracks()[0].enabled = settings.pushToTalkMode !== pushToTalkOptions.PUSH_TO_TALK;
+
+				connectionStuff.current.toggleDeafen = () => {
+					connectionStuff.current.deafened = !connectionStuff.current.deafened;
+					inStream.getAudioTracks()[0].enabled =
+						!connectionStuff.current.deafened &&
+						!connectionStuff.current.muted &&
+						connectionStuff.current.pushToTalkMode !== pushToTalkOptions.PUSH_TO_TALK;
+					setDeafened(connectionStuff.current.deafened);
+				};
+
+				connectionStuff.current.toggleMute = () => {
+					connectionStuff.current.muted = !connectionStuff.current.muted;
+					if (connectionStuff.current.deafened) {
+						connectionStuff.current.deafened = false;
+						connectionStuff.current.muted = false;
+					}
+					inStream.getAudioTracks()[0].enabled =
+						!connectionStuff.current.muted &&
+						!connectionStuff.current.deafened &&
+						connectionStuff.current.pushToTalkMode !== pushToTalkOptions.PUSH_TO_TALK;
+					setMuted(connectionStuff.current.muted);
+					setDeafened(connectionStuff.current.deafened);
+				};
+
+				ipcRenderer.on(IpcRendererMessages.TOGGLE_DEAFEN, connectionStuff.current.toggleDeafen);
+
+				ipcRenderer.on(IpcRendererMessages.IMPOSTOR_RADIO, (_: unknown, pressing: boolean) => {
+					connectionStuff.current.impostorRadio = pressing;
 				});
 
-				connection.on('data', (data) => {
-					const parsedData = JSON.parse(data);
-					if (parsedData.hasOwnProperty('impostorRadio')) {
-						const clientId = socketClientsRef.current[peer]?.clientId;
-						if (impostorRadioClientId.current === -1 && parsedData['impostorRadio']) {
-							impostorRadioClientId.current = clientId;
-						} else if (impostorRadioClientId.current === clientId && !parsedData['impostorRadio']) {
-							impostorRadioClientId.current = -1;
+				ipcRenderer.on(IpcRendererMessages.TOGGLE_MUTE, connectionStuff.current.toggleMute);
+				ipcRenderer.on(IpcRendererMessages.PUSH_TO_TALK, (_: unknown, pressing: boolean) => {
+					if (connectionStuff.current.pushToTalkMode === pushToTalkOptions.VOICE) return;
+					if (!connectionStuff.current.deafened && !connectionStuff.current.muted) {
+						inStream.getAudioTracks()[0].enabled =
+							connectionStuff.current.pushToTalkMode === pushToTalkOptions.PUSH_TO_TALK ? pressing : !pressing;
+					}
+				});
+
+				audioElements.current = {};
+
+				const connect = (lobbyCode: string, playerId: number, clientId: number, isHost: boolean) => {
+					console.log('connect called..', lobbyCode);
+					setOtherVAD({});
+					setOtherTalking({});
+					if (lobbyCode === 'MENU') {
+						Object.keys(peerConnections).forEach((k) => {
+							disconnectPeer(k);
+						});
+						setSocketClients({});
+						currentLobby = lobbyCode;
+					} else if (currentLobby !== lobbyCode) {
+						console.log('Currentlobby', currentLobby, lobbyCode);
+						socket.emit('leave');
+						socket.emit('id', playerId, clientId);
+						socket.emit('join', lobbyCode, playerId, clientId, isHost);
+						currentLobby = lobbyCode;
+					}
+				};
+
+				setConnect({ connect });
+
+				function createPeerConnection(peer: string, initiator: boolean, client: Client) {
+					console.log('CreatePeerConnection: ', peer, initiator);
+					disconnectClient(client);
+					const connection = new Peer({
+						stream,
+						initiator, // @ts-ignore-line
+						iceRestartEnabled: true,
+						config: settingsRef.current.natFix ? DEFAULT_ICE_CONFIG_TURN : iceConfig,
+					});
+
+					setPeerConnections((connections) => {
+						connections[peer] = connection;
+						return connections;
+					});
+
+					connection.on('connect', () => {
+						setTimeout(() => {
+							if (hostRef.current.isHost && connection.writable) {
+								try {
+									console.log('sending settings..');
+									connection.send(JSON.stringify(lobbySettingsRef.current));
+								} catch (e) {
+									console.warn('failed to update lobby settings: ', e);
+								}
+							}
+						}, 1000);
+					});
+
+					connection.on('stream', async (stream: MediaStream) => {
+						console.log('ONSTREAM');
+
+						setAudioConnected((old) => ({ ...old, [peer]: true }));
+						const dummyAudio = new Audio();
+						dummyAudio.srcObject = stream;
+						const context = new AudioContext();
+						const source = context.createMediaStreamSource(stream);
+						const dest = context.createMediaStreamDestination();
+
+						const gain = context.createGain();
+						const pan = context.createPanner();
+						gain.gain.value = 0;
+						pan.refDistance = 0.1;
+						pan.panningModel = 'equalpower';
+						pan.distanceModel = 'linear';
+						pan.maxDistance = maxDistanceRef.current;
+						pan.rolloffFactor = 1;
+
+						const muffle = context.createBiquadFilter();
+						muffle.type = 'lowpass';
+
+						source.connect(pan);
+						pan.connect(gain);
+
+						const reverb = context.createConvolver();
+						reverb.buffer = convolverBuffer.current;
+						const destination: AudioNode = dest;
+						// if (settingsRef.current.vadEnabled) {
+						// 	VAD(context, gain, undefined, {
+						// 		onVoiceStart: () => setTalking(true),
+						// 		onVoiceStop: () => setTalking(false),
+						// 		stereo: false,
+						// 	});
+						// }
+						gain.connect(destination);
+						const audio = document.createElement('audio') as ExtendedAudioElement;
+						document.body.appendChild(audio);
+						audio.setAttribute('autoplay', '');
+						audio.srcObject = dest.stream;
+						if (settingsRef.current.speaker.toLowerCase() !== 'default') {
+							audio.setSinkId(settingsRef.current.speaker);
 						}
-						console.log('Recieved impostor radio request', parsedData);
-					}
-					if (parsedData.hasOwnProperty('maxDistance')) {
-						if (!hostRef.current || hostRef.current.parsedHostId !== socketClientsRef.current[peer]?.clientId) return;
-						const newSettings = {...defaultlocalLobbySettings, ...parsedData};
-						setHostLobbySettings(newSettings);
-					}
-				});
-				connection.on('close', () => {
-					console.log('Disconnected from', peer, 'Initiator:', initiator);
-					disconnectPeer(peer);
-				});
-				connection.on('error', () => {
-					console.log('ONERROR');
-					/*empty*/
-				});
-				return connection;
-			}
 
-			socket.on('join', async (peer: string, client: Client) => {
-				createPeerConnection(peer, true, client);
-				setSocketClients((old) => ({ ...old, [peer]: client }));
-			});
+						audioElements.current[peer] = {
+							dummyAudioElement: dummyAudio,
+							audioElement: audio,
+							gain,
+							pan,
+							reverb,
+							muffle,
+							muffleConnected: false,
+							reverbConnected: false,
+							destination,
+						};
+					});
 
-			socket.on('signal', ({ data, from, client }: { data: Peer.SignalData; from: string, client: Client }) => {
-				if (data.hasOwnProperty('mobilePlayerInfo')) {
+					connection.on('signal', (data) => {
+						socket.emit('signal', {
+							data,
+							to: peer,
+						});
+					});
+
+					connection.on('data', (data) => {
+						const parsedData = JSON.parse(data);
+						if (parsedData.hasOwnProperty('impostorRadio')) {
+							const clientId = socketClientsRef.current[peer]?.clientId;
+							if (impostorRadioClientId.current === -1 && parsedData['impostorRadio']) {
+								impostorRadioClientId.current = clientId;
+							} else if (impostorRadioClientId.current === clientId && !parsedData['impostorRadio']) {
+								impostorRadioClientId.current = -1;
+							}
+							console.log('Recieved impostor radio request', parsedData);
+						}
+						if (parsedData.hasOwnProperty('maxDistance')) {
+							if (!hostRef.current || hostRef.current.parsedHostId !== socketClientsRef.current[peer]?.clientId) return;
+							const newSettings = { ...defaultlocalLobbySettings, ...parsedData };
+							setHostLobbySettings(newSettings);
+						}
+					});
+					connection.on('close', () => {
+						console.log('Disconnected from', peer, 'Initiator:', initiator);
+						disconnectPeer(peer);
+					});
+					connection.on('error', () => {
+						console.log('ONERROR');
+						/*empty*/
+					});
+					return connection;
+				}
+
+				socket.on('join', async (peer: string, client: Client) => {
+					createPeerConnection(peer, true, client);
+					setSocketClients((old) => ({ ...old, [peer]: client }));
+				});
+
+				socket.on('signal', ({ data, from, client }: { data: Peer.SignalData; from: string; client: Client }) => {
+					if (data.hasOwnProperty('mobilePlayerInfo')) {
 					// eslint-disable-line
-					const mobiledata = data as mobileHostInfo;
-					if (
-						mobiledata.mobilePlayerInfo.code === hostRef.current.code &&
-						hostRef.current.gamestate !== GameState.MENU
-					) {
-						hostRef.current.mobileRunning = true;
-						console.log('setting mobileRunning to true..');
+						const mobiledata = data as mobileHostInfo;
+						if (
+							mobiledata.mobilePlayerInfo.code === hostRef.current.code &&
+							hostRef.current.gamestate !== GameState.MENU
+						) {
+							hostRef.current.mobileRunning = true;
+							console.log('setting mobileRunning to true..');
+						}
+						return;
 					}
-					return;
-				}
-				let connection: Peer.Instance;
-				if (!socketClientsRef.current[from]) {
-					console.warn('SIGNAL FROM UNKOWN SOCKET..');
-					return;
-				}
-				if (data.hasOwnProperty('type')) {
-					if (peerConnections[from] && data.type !== 'offer') {
-						connection = peerConnections[from];
-					} else {
-						connection = createPeerConnection(from, false, client);
+					let connection: Peer.Instance;
+					if (!socketClientsRef.current[from]) {
+						console.warn('SIGNAL FROM UNKOWN SOCKET..');
+						return;
 					}
-					connection.signal(data);
-				}
-			});
-		},
-		(error) => {
-			console.error(error);
-			setError("Couldn't connect to your microphone:\n" + error);
-			// ipcRenderer.send(IpcMessages.SHOW_ERROR_DIALOG, {
-			// 	title: 'Error',
-			// 	content: 'Couldn\'t connect to your microphone:\n' + error
-			// });
-		});
+					if (data.hasOwnProperty('type')) {
+						if (peerConnections[from] && data.type !== 'offer') {
+							connection = peerConnections[from];
+						} else {
+							connection = createPeerConnection(from, false, client);
+						}
+						connection.signal(data);
+					}
+				});
+			},
+			(error) => {
+				console.error(error);
+				setError("Couldn't connect to your microphone:\n" + error);
+				// ipcRenderer.send(IpcMessages.SHOW_ERROR_DIALOG, {
+				// 	title: 'Error',
+				// 	content: 'Couldn\'t connect to your microphone:\n' + error
+				// });
+			}
+		);
 
 		return () => {
 			hostRef.current.mobileRunning = false;
@@ -1216,6 +1226,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			if (audio) {
 				handledPeerIds.push(peerId);
 				let gain = calculateVoiceAudio(gameState, settingsRef.current, myPlayer, player, audio);
+
 				if (connectionStuff.current.deafened || playerConfigs[player.nameHash]?.isMuted) {
 					gain = 0;
 				}
@@ -1268,14 +1279,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	useEffect(() => {
 		if (myPlayer?.shiftedColor != -1) {
 			connectionStuff.current.socket?.emit('VAD', false);
-			setTalking(false)
+			setTalking(false);
 		}
-	}, [myPlayer?.shiftedColor])
+	}, [myPlayer?.shiftedColor]);
 
 	useEffect(() => {
-		if (myPlayer?.shiftedColor == -1 || !talking)
-			connectionStuff.current.socket?.emit('VAD', talking);
-	}, [talking])
+		if (myPlayer?.shiftedColor == -1 || !talking) connectionStuff.current.socket?.emit('VAD', talking);
+	}, [talking]);
 
 	// Connect to P2P negotiator, when game mode change
 	useEffect(() => {
@@ -1354,123 +1364,126 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					<SupportLink />
 				</div>
 			)}
-			{(!error && !initialError) && (<>
-
-				<div className={classes.top}>
-					{myPlayer && gameState.lobbyCode !== 'MENU' && (
-						<>
-							<div className={classes.avatarWrapper}>
-								<Avatar
-									deafened={deafenedState}
-									muted={mutedState}
-									player={myPlayer}
-									borderColor={myPlayer?.shiftedColor == -1 ? '#2ecc71' : 'gray'}
-									connectionState={connected ? 'connected' : 'disconnected'}
-									isUsingRadio={myPlayer?.isImpostor && impostorRadioClientId.current === myPlayer.clientId}
-									talking={talking}
-									isAlive={!myPlayer.isDead}
-									size={100}
-									mod={gameState.mod}
-								/>
-							</div>
-						</>
-					)}
-					<div className={classes.right}>
-						<div>
-							<div className={classes.left}>
-								{myPlayer && gameState?.gameState !== GameState.MENU && (
-									<span className={classes.username}>{myPlayer.name}</span>
-								)}
-								<span
-									className={classes.code}
-									style={{
-										background: gameState.lobbyCode === 'MENU' ? 'transparent' : '#3e4346',
-									}}
-								>
-									{displayedLobbyCode === 'MENU' ? t('game.menu') : displayedLobbyCode}
-								</span>
-							</div>
-							{gameState.lobbyCode !== 'MENU' && (
-								<div className={classes.muteButtons}>
-									<IconButton onClick={connectionStuff.current.toggleMute} size="small">
-										{mutedState || deafenedState ? <MicOff /> : <Mic />}
-									</IconButton>
-									<IconButton onClick={connectionStuff.current.toggleDeafen} size="small">
-										{deafenedState ? <VolumeOff /> : <VolumeUp />}
-									</IconButton>
-								</div>
-							)}
-						</div>
-					</div>
-				</div>
-				{lobbySettings.deadOnly && (
+			{!error && !initialError && (
+				<>
 					<div className={classes.top}>
-						<small style={{ padding: 0 }}>{t('settings.lobbysettings.ghost_only_warning2')}</small>
-					</div>
-				)}
-				{lobbySettings.meetingGhostOnly && (
-					<div className={classes.top}>
-						<small style={{ padding: 0 }}>{t('settings.lobbysettings.meetings_only_warning2')}</small>
-					</div>
-				)}
-				{gameState.lobbyCode && <Divider />}
-				{displayedLobbyCode === 'MENU' && (
-					<div className={classes.top}>
-						<Button
-							style={{ margin: '10px' }}
-							onClick={() => {
-								ipcRenderer.send(IpcHandlerMessages.OPEN_LOBBYBROWSER);
-							}}
-							color="primary"
-							variant="outlined"
-						>
-							{t('buttons.public_lobby')}
-						</Button>
-					</div>
-				)}
-				{myPlayer && gameState.lobbyCode !== 'MENU' && (
-					<Grid
-						container
-						spacing={1}
-						className={classes.otherplayers}
-						alignItems="flex-start"
-						alignContent="flex-start"
-						justifyContent="flex-start"
-					>
-						{otherPlayers.map((player) => {
-							const peer = playerSocketIdsRef.current[player.clientId];
-							const connected = socketClients[peer]?.clientId === player.clientId || false;
-							const audio = audioConnected[peer];
-
-							if (!playerConfigs[player.nameHash]) {
-								playerConfigs[player.nameHash] = { volume: 1, isMuted: false };
-							}
-							const socketConfig = playerConfigs[player.nameHash];
-
-							return (
-								<Grid item key={player.id} xs={getPlayersPerRow(otherPlayers.length)}>
+						{myPlayer && gameState.lobbyCode !== 'MENU' && (
+							<>
+								<div className={classes.avatarWrapper}>
 									<Avatar
-										connectionState={!connected ? 'disconnected' : audio ? 'connected' : 'novoice'}
-										player={player}
-										talking={!player.inVent && otherTalking[player.clientId]}
-										borderColor="#2ecc71"
-										isAlive={!otherDead[player.clientId]}
-										isUsingRadio={
-											myPlayer?.isImpostor &&
-											!(player.disconnected || player.bugged) &&
-											impostorRadioClientId.current === player.clientId
-										}
-										size={50}
-										socketConfig={socketConfig}
-										onConfigChange={() => setSetting(`playerConfigMap.${player.nameHash}`, playerConfigs[player.nameHash])}
+										deafened={deafenedState}
+										muted={mutedState}
+										player={myPlayer}
+										borderColor={myPlayer?.shiftedColor == -1 ? '#2ecc71' : 'gray'}
+										connectionState={connected ? 'connected' : 'disconnected'}
+										isUsingRadio={myPlayer?.isImpostor && impostorRadioClientId.current === myPlayer.clientId}
+										talking={talking}
+										isAlive={!myPlayer.isDead}
+										size={100}
 										mod={gameState.mod}
 									/>
-								</Grid>
-							);
-						})}
-					</Grid>
-				)}
-			</>)}
+								</div>
+							</>
+						)}
+						<div className={classes.right}>
+							<div>
+								<div className={classes.left}>
+									{myPlayer && gameState?.gameState !== GameState.MENU && (
+										<span className={classes.username}>{myPlayer.name}</span>
+									)}
+									<span
+										className={classes.code}
+										style={{
+											background: gameState.lobbyCode === 'MENU' ? 'transparent' : '#3e4346',
+										}}
+									>
+										{displayedLobbyCode === 'MENU' ? t('game.menu') : displayedLobbyCode}
+									</span>
+								</div>
+								{gameState.lobbyCode !== 'MENU' && (
+									<div className={classes.muteButtons}>
+										<IconButton onClick={connectionStuff.current.toggleMute} size="small">
+											{mutedState || deafenedState ? <MicOff /> : <Mic />}
+										</IconButton>
+										<IconButton onClick={connectionStuff.current.toggleDeafen} size="small">
+											{deafenedState ? <VolumeOff /> : <VolumeUp />}
+										</IconButton>
+									</div>
+								)}
+							</div>
+						</div>
+					</div>
+					{lobbySettings.deadOnly && (
+						<div className={classes.top}>
+							<small style={{ padding: 0 }}>{t('settings.lobbysettings.ghost_only_warning2')}</small>
+						</div>
+					)}
+					{lobbySettings.meetingGhostOnly && (
+						<div className={classes.top}>
+							<small style={{ padding: 0 }}>{t('settings.lobbysettings.meetings_only_warning2')}</small>
+						</div>
+					)}
+					{gameState.lobbyCode && <Divider />}
+					{displayedLobbyCode === 'MENU' && (
+						<div className={classes.top}>
+							<Button
+								style={{ margin: '10px' }}
+								onClick={() => {
+									ipcRenderer.send(IpcHandlerMessages.OPEN_LOBBYBROWSER);
+								}}
+								color="primary"
+								variant="outlined"
+							>
+								{t('buttons.public_lobby')}
+							</Button>
+						</div>
+					)}
+					{myPlayer && gameState.lobbyCode !== 'MENU' && (
+						<Grid
+							container
+							spacing={1}
+							className={classes.otherplayers}
+							alignItems="flex-start"
+							alignContent="flex-start"
+							justifyContent="flex-start"
+						>
+							{otherPlayers.map((player) => {
+								const peer = playerSocketIdsRef.current[player.clientId];
+								const connected = socketClients[peer]?.clientId === player.clientId || false;
+								const audio = audioConnected[peer];
+
+								if (!playerConfigs[player.nameHash]) {
+									playerConfigs[player.nameHash] = { volume: 1, isMuted: false };
+								}
+								const socketConfig = playerConfigs[player.nameHash];
+
+								return (
+									<Grid item key={player.id} xs={getPlayersPerRow(otherPlayers.length)}>
+										<Avatar
+											connectionState={!connected ? 'disconnected' : audio ? 'connected' : 'novoice'}
+											player={player}
+											talking={!player.inVent && otherTalking[player.clientId]}
+											borderColor="#2ecc71"
+											isAlive={!otherDead[player.clientId]}
+											isUsingRadio={
+												myPlayer?.isImpostor &&
+												!(player.disconnected || player.bugged) &&
+												impostorRadioClientId.current === player.clientId
+											}
+											size={50}
+											socketConfig={socketConfig}
+											onConfigChange={() =>
+												setSetting(`playerConfigMap.${player.nameHash}`, playerConfigs[player.nameHash])
+											}
+											mod={gameState.mod}
+										/>
+									</Grid>
+								);
+							})}
+						</Grid>
+					)}
+				</>
+			)}
 			{otherPlayers.length <= 6 && <Footer />}
 		</div>
 	);

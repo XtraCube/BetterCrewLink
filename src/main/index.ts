@@ -317,9 +317,13 @@ if (!gotTheLock) {
 		integrationServer.unref();
 
 		integrationServer.on('message', (message) => {
-			console.log('Received process message:', message);
-			// send message to renderer but how????
-			global.mainWindow?.webContents.send(IpcRendererMessages.SET_MUTE_PLAYER, {id: message.id, mute: message.value});
+			var json = JSON.parse(message);
+
+			switch (json.type) {
+				case 'channels':
+					global.mainWindow?.webContents.send(IpcRendererMessages.SET_CHANNELS, json.id, json.value);
+					break;
+			}
 
 		});
 
