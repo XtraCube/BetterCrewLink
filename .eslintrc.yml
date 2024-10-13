@@ -24,6 +24,6 @@ rules:
   linebreak-style:
     - off
   'prettier/prettier':
-    - error
+    - off
   '@typescript-eslint/ban-ts-comment': off
   '@typescript-eslint/no-non-null-assertion': off

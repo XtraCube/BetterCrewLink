@@ -1149,6 +1149,8 @@ export default class GameReader {
 			isDummy,
 			x: x_round || x || 999,
 			y: y_round || y || 999,
+			inputChannels: new Set<string>(["default"]),
+			outputChannels: new Set<string>(["default"])
 		};
 	}
 }
