@@ -1,7 +1,7 @@
 'use strict'; // eslint-disable-line
 
 import { autoUpdater } from 'electron-updater';
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
 import windowStateKeeper from 'electron-window-state';
 import { platform } from 'os';
 import { join as joinPath } from 'path';
@@ -313,11 +313,12 @@ if (!gotTheLock) {
 		});
 
 		// use child_process to spawn integration server
-		const integrationServer = fork(joinPath(__dirname,"integrationServer.ts"), [], { "execArgv":["-r", "ts-node/register"] });
+		const child_process_file = joinPath(__dirname, '../resources/integrationServer.ts');
+		const integrationServer = fork(child_process_file, [], { "execArgv":["-r", "ts-node/register"] });
 		integrationServer.unref();
 
 		integrationServer.on('message', (message) => {
-			var json = JSON.parse(message);
+			const json = JSON.parse(message);
 
 			switch (json.type) {
 				case 'channels':
