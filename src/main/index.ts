@@ -1,7 +1,7 @@
 'use strict'; // eslint-disable-line
 
 import { autoUpdater } from 'electron-updater';
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session } from 'electron';
 import windowStateKeeper from 'electron-window-state';
 import { platform } from 'os';
 import { join as joinPath } from 'path';
