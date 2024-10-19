@@ -21,7 +21,7 @@
 		"lint": "eslint src",
 		"dev": "electron-webpack dev",
 		"compile": "electron-webpack",
-		"dist": "yarn compile && electron-builder --win --x64 --ia32",
+		"dist": "yarn compile && electron-builder --win --x64",
 		"dist:32": "yarn compile && electron-builder --win --ia32",
 		"dist:64": "yarn compile && electron-builder --win --x64",
 		"dist:linux": "yarn compile && electron-builder --linux --x64",
