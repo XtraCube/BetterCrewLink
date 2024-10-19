@@ -1,7 +1,7 @@
 'use strict'; // eslint-disable-line
 
 import { autoUpdater } from 'electron-updater';
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session } from 'electron';
 import windowStateKeeper from 'electron-window-state';
 import { platform } from 'os';
 import { join as joinPath } from 'path';
@@ -313,9 +313,7 @@ if (!gotTheLock) {
 		});
 
 		// use child_process to spawn integration server
-		const child_process_file = joinPath(__dirname, '../resources/integrationServer.ts');
-		dialog.showMessageBox({ message: "res: " + process.resourcesPath });
-		dialog.showMessageBox({ message: "dir: " + __dirname });
+		const child_process_file = joinPath(process.resourcesPath, 'integrationServer.ts');
 		const integrationServer = fork(child_process_file, [], { "execArgv":["-r", "ts-node/register"] });
 		integrationServer.unref();
 

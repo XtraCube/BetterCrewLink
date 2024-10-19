@@ -6,7 +6,7 @@ directories:
   buildResources: resources
 extraResources:
   - from: src/extraResources/
-    to: resources/
+    to: ../resources
 files:
   - from: .
     filter:
